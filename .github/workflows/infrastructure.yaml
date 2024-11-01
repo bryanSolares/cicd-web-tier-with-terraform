@@ -29,20 +29,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set aws role and region
+      - name: Set AWS Region and Assume Role based on Stage
+        id: set-aws-vars
         run: |
-          if ["${{ inputs.stage }}" == "dev"]; then
-            echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN_DEV }}" >> "$GITHUB_ENV"
+          if [ "${{ inputs.stage }}" == "dev" ]; then
             echo "AWS_REGION=${{ secrets.AWS_REGION_DEV }}" >> "$GITHUB_ENV"
+            echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN_DEV }}" >> "$GITHUB_ENV"
+          elif [ "${{ inputs.stage }}" == "qa" ]; then
+            echo "AWS_REGION=${{ secrets.AWS_REGION_QA }}" >> "$GITHUB_ENV"
+            echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN_QA }}" >> "$GITHUB_ENV"
           fi
-      - run: echo "Role ARN is ${{ env.AWS_ROLE_ARN }}"
-      - run: echo " Region is ${{ env.AWS_REGION }}"
 
-      - name: Configure AWS OIDC
+      # Paso 2: Configurar las credenciales de AWS después de que las variables se establezcan correctamente
+      - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }} # Usar el rol dinámico
+          aws-region: ${{ env.AWS_REGION }} # Usar la región dinámica
 
       - name: Check if bucket exists
         run: |
