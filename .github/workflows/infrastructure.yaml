@@ -29,26 +29,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Set aws role and assume role base on stage
+      - name: Set aws role and region
         run: |
-          if ["${{inputs.stage}}" == "dev"]; then
-            echo "AWS_REGION=${{ secrets.AWS_REGION_DEV }}" >> "$GITHUB_ENV"
+          if ["${{ inputs.stage }}" == "dev"]; then
             echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN_DEV }}" >> "$GITHUB_ENV"
+            echo "AWS_REGION=${{ secrets.AWS_REGION_DEV }}" >> "$GITHUB_ENV"
           fi
+      - run: echo "Role ARN is ${{ env.AWS_ROLE_ARN }}"
+      - run: echo " Region is ${{ env.AWS_REGION }}"
 
       - name: Configure AWS OIDC
         uses: aws-actions/configure-aws-credentials@v1
         with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
 
       - name: Check if bucket exists
         run: |
-          if aws s3api head-bucket --bucket "${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}}" 2>/dev/null; then
-            echo "Bucket ${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}} already exists"
+          if aws s3api head-bucket --bucket "${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }}" 2>/dev/null; then
+            echo "Bucket ${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }} already exists"
             echo "exists=true" >> $GITHUB_OUTPUT
           else
-            echo "Bucket ${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}} does not exist"
+            echo "Bucket ${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }} does not exist"
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
@@ -56,6 +58,6 @@ jobs:
         id: create-bucket
         if: env.exists == 'false'
         run: |
-          aws s3api create-bucket --bucket "${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}}" --region "${{env.AWS_REGION}}"
-          echo "Bucket ${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}} created"
+          aws s3api create-bucket --bucket "${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }}" --region "${{ env.AWS_REGION }}" --create-bucket-configuration LocationConstraint="${{ env.AWS_REGION }}"
+          echo "Bucket ${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }} created"
           echo "Bucket created successfully"
