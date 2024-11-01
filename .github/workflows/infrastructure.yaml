@@ -12,11 +12,50 @@ on:
           - dev
           - stage
           - prod
+permissions:
+  id-token: write
+  contents: read
 
 jobs:
-  terraform:
-    name: Terraform
+  check-bucket-exists:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        shell: bash
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
+
+      - name: Set aws role and assume role base on stage
+        run: |
+          if ["${{inputs.stage}}" == "dev"]; then
+            echo "AWS_REGION=${{ secrets.AWS_REGION_DEV }}" >> "$GITHUB_ENV"
+            echo "AWS_ROLE_ARN=${{ secrets.AWS_ROLE_ARN_DEV }}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Configure AWS OIDC
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Check if bucket exists
+        run: |
+          if aws s3api head-bucket --bucket "${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}}" 2>/dev/null; then
+            echo "Bucket ${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}} already exists"
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "Bucket ${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}} does not exist"
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create bucket if it does not exist
+        id: create-bucket
+        if: env.exists == 'false'
+        run: |
+          aws s3api create-bucket --bucket "${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}}" --region "${{env.AWS_REGION}}"
+          echo "Bucket ${{vars.TERRAFORM_BUCKET_NAME}}-${{inputs.stage}} created"
+          echo "Bucket created successfully"
