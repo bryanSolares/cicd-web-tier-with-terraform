@@ -1,0 +1,22 @@
+name: Infrastructure
+run-name: Infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "Stage for environment (dev, stage, prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
