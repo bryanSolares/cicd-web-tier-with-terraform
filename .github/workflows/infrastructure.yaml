@@ -61,6 +61,13 @@ jobs:
         id: create-bucket
         if: env.exists == 'false'
         run: |
-          aws s3api create-bucket --bucket "${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }}" --region "${{ env.AWS_REGION }}"
+          aws s3api create-bucket --bucket "${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }}" --region ${{ env.AWS_REGION }}
           echo "Bucket ${{ vars.TERRAFORM_BUCKET_NAME }}-${{ inputs.stage }} created"
           echo "Bucket created successfully"
+  deploy-infrastructure:
+    needs:
+      - check-bucket-exists
+    uses: ./.github/workflows/deploy-infra.yaml
+    secrets: inherit
+    with:
+      stage: ${{ inputs.stage }}
